@@ -13,13 +13,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
-import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.ui.theme.SurfSummerSchoolTheme
-import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.view.HistoryScreen
-import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.view.HomeScreen
-import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.view.QuizReviewScreen
-import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.viewmodel.HistoryScreenViewModel
-import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.viewmodel.HomeScreenViewModel
-import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.viewmodel.QuizReviewScreenViewModel
+import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.presentation.view.theme.SurfSummerSchoolTheme
+import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.presentation.view.HistoryScreen
+import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.presentation.view.HomeScreen
+import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.presentation.view.QuizReviewScreen
+import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.presentation.viewmodel.HistoryScreenViewModel
+import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.presentation.viewmodel.HomeScreenViewModel
+import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.presentation.viewmodel.QuizReviewScreenViewModel
 
 
 class MainActivity : ComponentActivity() {
@@ -55,7 +55,8 @@ class MainActivity : ComponentActivity() {
                     }
                     composable<HistoryScreenObject> {
                         HistoryScreen(modifier = Modifier.fillMaxSize(), historyScreenViewModel, {navController.navigate(
-                            QuizReviewScreenClass(it))})
+                            QuizReviewScreenClass(it))},
+                            {navController.popBackStack()})
                     }
                     composable<QuizReviewScreenClass> {
                         QuizReviewScreen(
