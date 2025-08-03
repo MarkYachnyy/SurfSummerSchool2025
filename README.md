@@ -16,3 +16,7 @@
 * Retrofit + Gson для обращения к API
 * Room для работы с локальной бд SQLite
 * Compose Navigation для навигации между экранами
+
+## Видео-демонстрация работы приложения
+
+* [[Google drive]](https://drive.google.com/file/d/1oBiYIasCTmcUvKBJV4DMaNg8IG8yixw3/view?usp=drivesdk)
