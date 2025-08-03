@@ -10,14 +10,15 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.data.repository.completed_quiz.database.QuizDatabase
 import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.data.repository.completed_quiz.QuizHistoryRepository
+import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.data.repository.completed_quiz.database.QuizDatabase
 import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.data.repository.completed_quiz.database.entity.QuestionDBEntity
+import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.data.repository.quiz.QuizRepository
 import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.domain.model.quiz.Question
 import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.domain.model.quiz.Quiz
-import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.data.repository.quiz.QuizRepository
 
 enum class HomeScreenState {
     INITIAL,
@@ -33,15 +34,39 @@ class HomeScreenViewModel() : ViewModel() {
     var currentOptionChosen by mutableIntStateOf(-1)
     var answerOptions: MutableList<List<String>> = ArrayList()
     var givenAnswers: MutableList<String> = ArrayList()
+    var allTime by mutableIntStateOf(300)
+    var timeLeft by mutableIntStateOf(300)
+    private var timerIsOn = false
 
     private val quizRepository: QuizRepository = QuizRepository()
     private lateinit var quizHistoryRepository: QuizHistoryRepository
 
     fun initQuizHistoryRepository(context: Context) {
-
         val quizDao = QuizDatabase.getDatabase(context).quizDao()
         quizHistoryRepository = QuizHistoryRepository(quizDao)
+    }
 
+    fun startTimer(onTimeUp: () -> Unit) {
+        timeLeft = allTime
+        timerIsOn = true
+        viewModelScope.launch {
+            while (timerIsOn && timeLeft > 0) {
+                delay(1000)
+                timeLeft--
+            }
+            if (timeLeft == 0 && timerIsOn) {
+                onTimeUp.invoke()
+            }
+        }
+    }
+
+    fun endQuiz() {
+        timerIsOn = false
+        if (givenAnswers.size < questions.size) {
+            for (i in currentQuestionIndex..questions.size - 1) {
+                givenAnswers.add(questions[i].incorrectAnswers.random())
+            }
+        }
     }
 
     fun setQuiz(quiz: Quiz) {
@@ -59,7 +84,7 @@ class HomeScreenViewModel() : ViewModel() {
         currentQuestionIndex = 0
     }
 
-    fun loadQuiz(onFailureMessageDisplay: () -> Unit) {
+    fun loadQuiz(onFailureMessageDisplay: () -> Unit, onSuccess: () -> Unit) {
         state = HomeScreenState.LOADING
         viewModelScope.launch {
             var quiz: Quiz? = null
@@ -76,6 +101,7 @@ class HomeScreenViewModel() : ViewModel() {
             } else {
                 setQuiz(quiz!!)
                 state = HomeScreenState.QUIZ
+                onSuccess.invoke()
             }
         }
     }
@@ -92,7 +118,7 @@ class HomeScreenViewModel() : ViewModel() {
                 withContext(Dispatchers.IO) {
                     var allQuizzes = quizHistoryRepository.getAllQuizzes()
                     var id = 1
-                    if(allQuizzes.isNotEmpty()){
+                    if (allQuizzes.isNotEmpty()) {
                         id = allQuizzes.maxOfOrNull { it.id }!!.toInt()
                     }
                     quizHistoryRepository.addQuiz(
@@ -111,7 +137,7 @@ class HomeScreenViewModel() : ViewModel() {
                             )
                         })
                 }
-            } catch (e: Exception){
+            } catch (e: Exception) {
 
             }
         }

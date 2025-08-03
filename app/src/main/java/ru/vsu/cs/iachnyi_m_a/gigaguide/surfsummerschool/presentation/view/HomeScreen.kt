@@ -23,9 +23,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +38,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.R
 import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.presentation.view.theme.Black
 import ru.vsu.cs.iachnyi_m_a.gigaguide.surfsummerschool.presentation.view.theme.DarkPurple
@@ -54,11 +60,63 @@ fun HomeScreen(
     onHistoryClickedCallback: () -> Unit
 ) {
     SurfSummerSchoolTheme {
-
+        var timeUpDialogOpen by remember { mutableStateOf(false) }
+        when {
+            timeUpDialogOpen -> {
+                Dialog(onDismissRequest = {}) {
+                    Column(
+                        modifier = Modifier
+                            .padding(20.dp)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(45.dp))
+                            .background(color = White)
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "Время вышло!", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+                        Text(modifier = Modifier.padding(vertical = 20.dp), text = "Вы не успели завершить викторину. Попробуйте еще раз!", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                        Button(
+                            contentPadding = PaddingValues(vertical = 10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp),
+                            onClick = {
+                                homeScreenViewModel.endQuiz()
+                                homeScreenViewModel.addCurrentQuizToHistory()
+                                homeScreenViewModel.state = HomeScreenState.INITIAL
+                                timeUpDialogOpen = false
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Purple,
+                                contentColor = White
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text(
+                                text = "НАЧАТЬ ЗАНОВО",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    }
+                }
+            }
+        }
         if (homeScreenViewModel.state == HomeScreenState.INITIAL) {
             InitialScreen(
                 modifier = Modifier.fillMaxSize(),
-                onClickStart = { homeScreenViewModel.loadQuiz({ toastFunction.invoke("Ошибка загрузки викторины!") }) },
+                onClickStart = {
+                    homeScreenViewModel.loadQuiz(
+                        onFailureMessageDisplay = {
+                            toastFunction.invoke(
+                                "Ошибка загрузки викторины!"
+                            )
+                        },
+                        onSuccess = {
+                            homeScreenViewModel.startTimer(onTimeUp = {
+                                timeUpDialogOpen = true
+                            })
+                        })
+                },
                 onClickHistory = onHistoryClickedCallback
             )
         } else if (homeScreenViewModel.state == HomeScreenState.LOADING) {
@@ -77,10 +135,13 @@ fun HomeScreen(
                         homeScreenViewModel.currentQuestionIndex++
                         homeScreenViewModel.currentOptionChosen = -1
                     } else {
+                        homeScreenViewModel.endQuiz()
                         homeScreenViewModel.state = HomeScreenState.RESULT
                     }
                 },
-                questionText = homeScreenViewModel.questions[homeScreenViewModel.currentQuestionIndex].question
+                questionText = homeScreenViewModel.questions[homeScreenViewModel.currentQuestionIndex].question,
+                allTime = homeScreenViewModel.allTime,
+                timeLeft = homeScreenViewModel.timeLeft
             )
         } else {
             ResultScreen(
@@ -214,7 +275,9 @@ fun QuizScreen(
     answerOptions: List<String>,
     chosenOptionIndex: Int,
     onOptionChosen: (Int) -> Unit,
-    onQuestionAnswered: () -> Unit
+    onQuestionAnswered: () -> Unit,
+    timeLeft: Int,
+    allTime: Int
 ) {
     Column(
         modifier = modifier
@@ -241,16 +304,43 @@ fun QuizScreen(
                 .background(color = White)
                 .fillMaxWidth()
                 .padding(20.dp)
-                .weight(6f),
+                .weight(7f),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = intToMins(timeLeft),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = DarkPurple
+                )
+                Text(
+                    text = intToMins(allTime),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = DarkPurple
+                )
+            }
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp),
+                progress = { 1f * timeLeft / allTime },
+                trackColor = LightGrey,
+                color = DarkPurple,
+                gapSize = 0.dp
+            )
             Text(
+                modifier = Modifier.padding(vertical = 20.dp),
                 text = "Вопрос ${questionIndex + 1} из $questionCount",
                 style = MaterialTheme.typography.titleMedium,
                 color = LightPurple
             )
             Text(
-                modifier = Modifier.padding(top = 20.dp),
+                modifier = Modifier,
                 textAlign = TextAlign.Center,
                 text = questionText,
                 style = MaterialTheme.typography.titleLarge
@@ -435,4 +525,10 @@ fun ResultScreen(modifier: Modifier = Modifier, result: Int, onClickFinish: () -
             }
         }
     }
+}
+
+private fun intToMins(value: Int): String {
+    var min = value / 60
+    var sec = value % 60
+    return (if (min < 10) "0" else "") + min.toString() + ":" + (if (sec < 10) "0" else "") + sec.toString()
 }
